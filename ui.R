@@ -17,10 +17,14 @@ shinyUI(fluidPage(
     sidebarLayout(
         sidebarPanel(
             input.datafile,
+            hr(),
+            h3('File format options'),
             input.headerrow,
             input.separator,
             input.quotechar,
+            input.missingstr,
             hr(),
+            h3('Column Selection'),
             uiOutput('variableselection'),
             uiOutput('variablesvalid')
         ),
