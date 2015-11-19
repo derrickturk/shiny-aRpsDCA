@@ -10,6 +10,7 @@ input.separator <- radioButtons('separator', 'Separator',
   c(Comma=',', Tab='\t', Semicolon=';', Colon=':', Pipe='|'), ',')
 input.quotechar <- radioButtons('quotechar', 'Quote character',
   c(Double='"', Single="'", None=''), '"')
+input.missingstr <- textInput('missingstr', 'Missing data indicator', '#N/A!')
 
 shinyUI(fluidPage(
     titlePanel('aRpsDCA interactive demo'),
@@ -20,9 +21,10 @@ shinyUI(fluidPage(
             input.separator,
             input.quotechar,
             hr(),
-            p("Here's where we'll use uiOutput to generate drop-downs.")
+            uiOutput('variableselection'),
+            uiOutput('variablesvalid')
         ),
         mainPanel(
             tabsetPanel(
                 tabPanel('Data', tableOutput('table')),
-                tabPanel('Plot', plotOutput('decline')))))))
+                tabPanel('Plot', plotOutput('decline', height='600px')))))))
