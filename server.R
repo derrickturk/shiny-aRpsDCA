@@ -80,9 +80,20 @@ shinyServer(function (input, output, session) {
         if (!reactive.valid.plot())
             return(NULL)
         palette <- rainbow(reactive.nwells())
-        plot(reactive.rate() ~ reactive.time(),
-          col=palette[as.factor(reactive.wellid())],
+        plot(reactive.rate() ~ reactive.time(), type="n",
           xlab=input$timevar, ylab=input$ratevar, log="y")
+        wellid.factor <- as.factor(reactive.wellid())
+        sapply(levels(wellid.factor), function (well) {
+            well.rate <- reactive.rate()[wellid.factor == well]
+            print(well.rate)
+            well.time <- reactive.time()[wellid.factor == well]
+            time.order <- order(well.time)
+            well.rate <- well.rate[time.order]
+            print(well.rate)
+            well.time <- well.time[time.order]
+            lines(well.rate ~ well.time,
+              col=palette[match(well, levels(wellid.factor))])
+        })
     })
 
     output$table <- renderTable({
