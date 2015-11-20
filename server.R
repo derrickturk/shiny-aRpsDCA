@@ -70,26 +70,74 @@ shinyServer(function (input, output, session) {
             length(unique(wells))
     })
 
-    reactive.valid.plot <- reactive({
+    reactive.wellid.filtered <- reactive({
+        if (is.null(reactive.wellid())) {
+            NULL
+        } else {
+            if (is.null(input$selectedwells)) # not viewed yet
+                reactive.wellid()
+            else
+                reactive.wellid()[reactive.wellid() %in% input$selectedwells]
+        }
+    })
+
+    reactive.rate.filtered <- reactive({
+        if (is.null(reactive.rate())) {
+            NULL
+        } else {
+            if (is.null(input$selectedwells)) # not viewed yet
+                reactive.rate()
+            else
+                reactive.rate()[reactive.wellid() %in% input$selectedwells]
+        }
+    })
+
+    reactive.time.filtered <- reactive({
+        if (is.null(reactive.time())) {
+            NULL
+        } else {
+            if (is.null(input$selectedwells)) # not viewed yet
+                reactive.time()
+            else
+                reactive.time()[reactive.wellid() %in% input$selectedwells]
+        }
+    })
+
+    reactive.nwells.filtered <- reactive({
+        wells <- reactive.wellid.filtered()
+        if (is.null(wells))
+            NULL
+        else
+            length(unique(wells))
+    })
+
+    reactive.valid.data <- reactive({
         !is.null(reactive.wellid()) && !all(is.na(reactive.wellid())) &&
           !is.null(reactive.time()) && !all(is.na(reactive.time())) &&
           !is.null(reactive.rate()) && !all(is.na(reactive.rate()))
     })
 
+    reactive.valid.filter <- reactive({
+        !is.null(reactive.wellid.filtered()) &&
+        !all(is.na(reactive.wellid.filtered())) &&
+        !is.null(reactive.time.filtered()) &&
+        !all(is.na(reactive.time.filtered())) &&
+        !is.null(reactive.rate.filtered()) &&
+        !all(is.na(reactive.rate.filtered()))
+    })
+
     output$decline <- renderPlot({
-        if (!reactive.valid.plot())
+        if (is.null(reactive.wellid.filtered()))
             return(NULL)
-        palette <- rainbow(reactive.nwells())
-        plot(reactive.rate() ~ reactive.time(), type="n",
+        palette <- rainbow(reactive.nwells.filtered())
+        plot(reactive.rate.filtered() ~ reactive.time.filtered(), type="n",
           xlab=input$timevar, ylab=input$ratevar, log="y")
-        wellid.factor <- as.factor(reactive.wellid())
+        wellid.factor <- as.factor(reactive.wellid.filtered())
         sapply(levels(wellid.factor), function (well) {
-            well.rate <- reactive.rate()[wellid.factor == well]
-            print(well.rate)
-            well.time <- reactive.time()[wellid.factor == well]
+            well.rate <- reactive.rate.filtered()[wellid.factor == well]
+            well.time <- reactive.time.filtered()[wellid.factor == well]
             time.order <- order(well.time)
             well.rate <- well.rate[time.order]
-            print(well.rate)
             well.time <- well.time[time.order]
             lines(well.rate ~ well.time,
               col=palette[match(well, levels(wellid.factor))])
@@ -117,9 +165,20 @@ shinyServer(function (input, output, session) {
     })
 
     output$variablesvalid <- renderUI({
-        if (valid.data(reactive.data()) && !reactive.valid.plot())
+        if (valid.data(reactive.data()) && !reactive.valid.data())
             tagList(hr(), p('Invalid data in selected columns.'))
         else
             NULL
+    })
+
+    output$wellchooser <- renderUI({
+        if (!reactive.valid.data()) {
+            NULL
+        } else {
+            well.names <- sort(unique(reactive.wellid()))
+            tagList(h3('Active wells'), selectInput('selectedwells', NULL,
+              well.names, multiple=TRUE, selected=well.names, selectize=FALSE,
+              size=min(length(well.names), 50)))
+        }
     })
 })

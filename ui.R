@@ -12,22 +12,32 @@ input.quotechar <- radioButtons('quotechar', 'Quote character',
   c(Double='"', Single="'", None=''), '"')
 input.missingstr <- textInput('missingstr', 'Missing data indicator', '#N/A!')
 
+input.declinetype <- selectInput('declinetype', 'Decline type',
+  c('Arps exponential', 'Arps hyperbolic', 'Hyperbolic-to-exponential'))
+
 shinyUI(fluidPage(
     titlePanel('aRpsDCA interactive demo'),
     sidebarLayout(
         sidebarPanel(
-            input.datafile,
-            hr(),
-            h3('File format options'),
-            input.headerrow,
-            input.separator,
-            input.quotechar,
-            input.missingstr,
-            hr(),
-            h3('Column Selection'),
-            uiOutput('variableselection'),
-            uiOutput('variablesvalid')
-        ),
+            tabsetPanel(
+                tabPanel("File Upload",
+                    h3('File selection'),
+                    input.datafile,
+                    hr(),
+                    h3('File format options'),
+                    input.headerrow,
+                    input.separator,
+                    input.quotechar,
+                    input.missingstr,
+                    hr(),
+                    h3('Column Selection'),
+                    uiOutput('variableselection'),
+                    uiOutput('variablesvalid')),
+                tabPanel("Well Selection",
+                    uiOutput('wellchooser')),
+                tabPanel("Fit Options",
+                    h3('aRpsDCA options'),
+                    input.declinetype))),
         mainPanel(
             tabsetPanel(
                 tabPanel('Data', tableOutput('table')),
