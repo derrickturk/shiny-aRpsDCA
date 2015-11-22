@@ -14,7 +14,7 @@ input.missingstr <- textInput('missingstr', 'Missing data indicator', '#N/A!')
 
 input.declinetype <- selectInput('declinetype', 'Decline type',
   c('Arps exponential' = 'EXP',
-    'Arps hyperbolic' = 'HYP',))
+    'Arps hyperbolic' = 'HYP'))
     #'Hyperbolic-to-exponential' = 'H2E'))
 
 shinyUI(fluidPage(
@@ -33,8 +33,7 @@ shinyUI(fluidPage(
                     input.missingstr,
                     hr(),
                     h3('Column Selection'),
-                    uiOutput('variableselection'),
-                    uiOutput('variablesvalid')),
+                    uiOutput('variableselection')),
                 tabPanel("Well Selection",
                     uiOutput('wellchooser')),
                 tabPanel("Fit Options",

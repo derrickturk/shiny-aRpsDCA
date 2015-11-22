@@ -15,8 +15,9 @@ valid.data <- function(frame)
 
 shinyServer(function (input, output, session) {
     reactive.data <- reactive({
-        if (is.null(input$datafile$datapath))
-            return(NULL)
+        validate(
+            need(!is.null(input$datafile$datapath), "Please upload a file.")
+        )
 
         read.delim(file=input$datafile$datapath, sep=input$separator,
           quote=input$quotechar, header=input$headerrow,
@@ -24,14 +25,19 @@ shinyServer(function (input, output, session) {
     })
 
     reactive.wellid <- reactive({
-        if (!valid.data(reactive.data()))
-            return(NULL)
+        validate(
+            need(valid.data(reactive.data()),
+              "Data file invalid or has too few columns.")
+        )
         as.character(reactive.data()[[input$wellidvar]])
     })
 
     reactive.time <- reactive({
-        if (!valid.data(reactive.data()))
-            return(NULL)
+        validate(
+            need(valid.data(reactive.data()),
+              "Data file invalid or has too few columns.")
+        )
+
         time.data <- reactive.data()[[input$timevar]]
         try <- as.numeric(time.data)
         if (any(!is.na(try)))
@@ -53,62 +59,49 @@ shinyServer(function (input, output, session) {
         if (any(!is.na(try)))
             return(try)
 
-        NULL
+        validate(
+            need(FALSE, "Invalid time column.")
+        )
     })
 
     reactive.rate <- reactive({
-        if (!valid.data(reactive.data()))
-            return(NULL)
+        validate(
+            need(valid.data(reactive.data()),
+              "Data file invalid or has too few columns.")
+        )
+
         as.numeric(reactive.data()[[input$ratevar]])
     })
 
     reactive.nwells <- reactive({
         wells <- reactive.wellid()
-        if (is.null(wells))
-            NULL
-        else
-            length(unique(wells))
+        length(unique(wells))
     })
 
     reactive.wellid.filtered <- reactive({
-        if (is.null(reactive.wellid())) {
-            NULL
-        } else {
-            if (is.null(input$selectedwells)) # not viewed yet
-                reactive.wellid()
-            else
-                reactive.wellid()[reactive.wellid() %in% input$selectedwells]
-        }
+        if (is.null(input$selectedwells)) # not viewed yet
+            reactive.wellid()
+        else
+            reactive.wellid()[reactive.wellid() %in% input$selectedwells]
     })
 
     reactive.rate.filtered <- reactive({
-        if (is.null(reactive.rate())) {
-            NULL
-        } else {
-            if (is.null(input$selectedwells)) # not viewed yet
-                reactive.rate()
-            else
-                reactive.rate()[reactive.wellid() %in% input$selectedwells]
-        }
+        if (is.null(input$selectedwells)) # not viewed yet
+            reactive.rate()
+        else
+            reactive.rate()[reactive.wellid() %in% input$selectedwells]
     })
 
     reactive.time.filtered <- reactive({
-        if (is.null(reactive.time())) {
-            NULL
-        } else {
-            if (is.null(input$selectedwells)) # not viewed yet
-                reactive.time()
-            else
-                reactive.time()[reactive.wellid() %in% input$selectedwells]
-        }
+        if (is.null(input$selectedwells)) # not viewed yet
+            reactive.time()
+        else
+            reactive.time()[reactive.wellid() %in% input$selectedwells]
     })
 
     reactive.nwells.filtered <- reactive({
         wells <- reactive.wellid.filtered()
-        if (is.null(wells))
-            NULL
-        else
-            length(unique(wells))
+        length(unique(wells))
     })
 
     reactive.valid.data <- reactive({
@@ -127,54 +120,56 @@ shinyServer(function (input, output, session) {
     })
 
     reactive.declines <- reactive({
-        if (!reactive.valid.filter()) {
-            NULL
-        } else {
-            if (input$declinetype == 'EXP')
-                fit.fn <- best.exponential
-            else if (input$declinetype == 'HYP')
-                fit.fn <- best.hyperbolic
-          # else if (input$declinetype == 'H2E')
-          #     fit.fn <- best.hyp2exp
-            else
+        validate(
+            need(reactive.valid.filter(), "Invalid columns or wells selected.")
+        )
+
+        if (input$declinetype == 'EXP')
+            fit.fn <- best.exponential
+        else if (input$declinetype == 'HYP')
+            fit.fn <- best.hyperbolic
+      # else if (input$declinetype == 'H2E')
+      #     fit.fn <- best.hyp2exp
+        else
+            validate(need(FALSE, 'Invalid decline type.'))
+
+        lapply(sort(unique(reactive.wellid.filtered())), function (well) {
+            well.time <-
+              reactive.time.filtered()[reactive.wellid.filtered() == well]
+            well.rate <-
+              reactive.rate.filtered()[reactive.wellid.filtered() == well]
+            which.present <- !is.na(well.time) & !is.na(well.rate)
+            well.time <- well.time[which.present]
+            well.rate <- well.rate[which.present]
+
+            if (length(well.time) <= 2)
                 return(NULL)
 
-            lapply(sort(unique(reactive.wellid.filtered())), function (well) {
+            time.order <- order(well.time)
+            well.time <- well.time[time.order]
+            well.rate <- well.rate[time.order]
+
+            if (inherits(well.time, "Date")) {
                 well.time <-
-                  reactive.time.filtered()[reactive.wellid.filtered() == well]
-                well.rate <-
-                  reactive.rate.filtered()[reactive.wellid.filtered() == well]
-                which.present <- !is.na(well.time) & !is.na(well.rate)
-                well.time <- well.time[which.present]
-                well.rate <- well.rate[which.present]
+                  as.numeric(well.time) - as.numeric(well.time)[1]
+            }
 
-                if (length(well.time) <= 2)
-                    return(NULL)
+            peak.time <- well.time[which.max(well.rate)]
+            well.rate <- well.rate[well.time >= peak.time]
+            well.time <- well.time[well.time >= peak.time]
 
-                time.order <- order(well.time)
-                well.time <- well.time[time.order]
-                well.rate <- well.rate[time.order]
+            if (length(well.time) <= 2)
+                return(NULL)
 
-                if (inherits(well.time, "Date")) {
-                    well.time <-
-                      as.numeric(well.time) - as.numeric(well.time)[1]
-                }
-
-                peak.time <- well.time[which.max(well.rate)]
-                well.rate <- well.rate[well.time >= peak.time]
-                well.time <- well.time[well.time >= peak.time]
-
-                if (length(well.time) <= 2)
-                    return(NULL)
-
-                list(decline=fit.fn(well.rate, well.time), peak.time=peak.time)
-            })
-        }
+            list(decline=fit.fn(well.rate, well.time), peak.time=peak.time)
+        })
     })
 
     output$decline <- renderPlot({
-        if (is.null(reactive.wellid.filtered()))
-            return(NULL)
+        validate(
+            need(reactive.valid.filter(), "Invalid columns or wells selected.")
+        )
+
         palette <- rainbow(reactive.nwells.filtered())
         plot(reactive.rate.filtered() ~ reactive.time.filtered(), type="n",
           xlab=input$timevar, ylab=input$ratevar, log="y")
@@ -191,14 +186,10 @@ shinyServer(function (input, output, session) {
     })
 
     output$table <- renderTable({
-        if (is.null(reactive.data()))
-            return(NULL)
         reactive.data()
     })
 
     output$declinestr <- renderPrint({
-        if (is.null(reactive.declines()))
-            return(NULL)
         print(reactive.declines())
     })
 
@@ -216,21 +207,10 @@ shinyServer(function (input, output, session) {
         }
     })
 
-    output$variablesvalid <- renderUI({
-        if (valid.data(reactive.data()) && !reactive.valid.data())
-            tagList(hr(), p('Invalid data in selected columns.'))
-        else
-            NULL
-    })
-
     output$wellchooser <- renderUI({
-        if (!reactive.valid.data()) {
-            NULL
-        } else {
-            well.names <- sort(unique(reactive.wellid()))
-            tagList(h3('Active wells'), selectInput('selectedwells', NULL,
-              well.names, multiple=TRUE, selected=well.names, selectize=FALSE,
-              size=min(length(well.names), 50)))
-        }
+        well.names <- sort(unique(reactive.wellid()))
+        tagList(h3('Active wells'), selectInput('selectedwells', NULL,
+          well.names, multiple=TRUE, selected=well.names, selectize=FALSE,
+          size=min(length(well.names), 50)))
     })
 })
