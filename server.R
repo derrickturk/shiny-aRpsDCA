@@ -126,6 +126,52 @@ shinyServer(function (input, output, session) {
         !all(is.na(reactive.rate.filtered()))
     })
 
+    reactive.declines <- reactive({
+        if (!reactive.valid.filter()) {
+            NULL
+        } else {
+            if (input$declinetype == 'EXP')
+                fit.fn <- best.exponential
+            else if (input$declinetype == 'HYP')
+                fit.fn <- best.hyperbolic
+          # else if (input$declinetype == 'H2E')
+          #     fit.fn <- best.hyp2exp
+            else
+                return(NULL)
+
+            lapply(sort(unique(reactive.wellid.filtered())), function (well) {
+                well.time <-
+                  reactive.time.filtered()[reactive.wellid.filtered() == well]
+                well.rate <-
+                  reactive.rate.filtered()[reactive.wellid.filtered() == well]
+                which.present <- !is.na(well.time) & !is.na(well.rate)
+                well.time <- well.time[which.present]
+                well.rate <- well.rate[which.present]
+
+                if (length(well.time) <= 2)
+                    return(NULL)
+
+                time.order <- order(well.time)
+                well.time <- well.time[time.order]
+                well.rate <- well.rate[time.order]
+
+                if (inherits(well.time, "Date")) {
+                    well.time <-
+                      as.numeric(well.time) - as.numeric(well.time)[1]
+                }
+
+                peak.time <- well.time[which.max(well.rate)]
+                well.rate <- well.rate[well.time >= peak.time]
+                well.time <- well.time[well.time >= peak.time]
+
+                if (length(well.time) <= 2)
+                    return(NULL)
+
+                list(decline=fit.fn(well.rate, well.time), peak.time=peak.time)
+            })
+        }
+    })
+
     output$decline <- renderPlot({
         if (is.null(reactive.wellid.filtered()))
             return(NULL)
@@ -148,6 +194,12 @@ shinyServer(function (input, output, session) {
         if (is.null(reactive.data()))
             return(NULL)
         reactive.data()
+    })
+
+    output$declinestr <- renderPrint({
+        if (is.null(reactive.declines()))
+            return(NULL)
+        print(reactive.declines())
     })
 
     output$variableselection <- renderUI({

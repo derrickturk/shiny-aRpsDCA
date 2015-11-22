@@ -13,7 +13,9 @@ input.quotechar <- radioButtons('quotechar', 'Quote character',
 input.missingstr <- textInput('missingstr', 'Missing data indicator', '#N/A!')
 
 input.declinetype <- selectInput('declinetype', 'Decline type',
-  c('Arps exponential', 'Arps hyperbolic', 'Hyperbolic-to-exponential'))
+  c('Arps exponential' = 'EXP',
+    'Arps hyperbolic' = 'HYP',))
+    #'Hyperbolic-to-exponential' = 'H2E'))
 
 shinyUI(fluidPage(
     titlePanel('aRpsDCA interactive demo'),
@@ -41,4 +43,5 @@ shinyUI(fluidPage(
         mainPanel(
             tabsetPanel(
                 tabPanel('Data', tableOutput('table')),
+                tabPanel('Declines', textOutput('declinestr')),
                 tabPanel('Plot', plotOutput('decline', height='600px')))))))
