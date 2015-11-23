@@ -133,7 +133,7 @@ shinyServer(function (input, output, session) {
         else
             validate(need(FALSE, 'Invalid decline type.'))
 
-        lapply(sort(unique(reactive.wellid.filtered())), function (well) {
+        sapply(sort(unique(reactive.wellid.filtered())), function (well) {
             well.time <-
               reactive.time.filtered()[reactive.wellid.filtered() == well]
             well.rate <-
@@ -161,11 +161,13 @@ shinyServer(function (input, output, session) {
             if (length(well.time) <= 2)
                 return(NULL)
 
-            list(decline=fit.fn(well.rate, well.time), peak.time=peak.time)
-        })
+            result <- fit.fn(well.rate, well.time)
+            result$peak.time <- peak.time
+            result
+        }, simplify=FALSE, USE.NAMES=TRUE)
     })
 
-    output$decline <- renderPlot({
+    output$ratetime <- renderPlot({
         validate(
             need(reactive.valid.filter(), "Invalid columns or wells selected.")
         )
@@ -173,6 +175,7 @@ shinyServer(function (input, output, session) {
         palette <- rainbow(reactive.nwells.filtered())
         plot(reactive.rate.filtered() ~ reactive.time.filtered(), type="n",
           xlab=input$timevar, ylab=input$ratevar, log="y")
+
         wellid.factor <- as.factor(reactive.wellid.filtered())
         sapply(levels(wellid.factor), function (well) {
             well.rate <- reactive.rate.filtered()[wellid.factor == well]
@@ -180,8 +183,24 @@ shinyServer(function (input, output, session) {
             time.order <- order(well.time)
             well.rate <- well.rate[time.order]
             well.time <- well.time[time.order]
+
             lines(well.rate ~ well.time,
-              col=palette[match(well, levels(wellid.factor))])
+              col=palette[match(well, levels(wellid.factor))], lty='dashed')
+
+            well.decline <- reactive.declines()[[well]]
+            if (!is.null(well.decline)) {
+                well.time.forecast <- as.numeric(well.time)
+                well.time.forecast.shift <-
+                  well.time.forecast - well.time.forecast[1]
+                which.forecast <-
+                  which(well.time.forecast.shift >= well.decline$peak.time)
+                well.time.forecast.shift <-
+                  well.time.forecast.shift[which.forecast]
+                well.rate.forecast <- arps.q(well.decline$decline,
+                  well.time.forecast.shift)
+                lines(well.rate.forecast ~ well.time[which.forecast],
+                  col=palette[match(well, levels(wellid.factor))], lty='dotted')
+            }
         })
     })
 
@@ -189,7 +208,7 @@ shinyServer(function (input, output, session) {
         reactive.data()
     })
 
-    output$declinestr <- renderPrint({
+    output$declineparams <- renderPrint({
         print(reactive.declines())
     })
 

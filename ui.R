@@ -42,5 +42,5 @@ shinyUI(fluidPage(
         mainPanel(
             tabsetPanel(
                 tabPanel('Data', tableOutput('table')),
-                tabPanel('Declines', textOutput('declinestr')),
-                tabPanel('Plot', plotOutput('decline', height='600px')))))))
+                tabPanel('Declines', textOutput('declineparams')),
+                tabPanel('Plot', plotOutput('ratetime', height='600px')))))))
