@@ -2,6 +2,7 @@
 
 library(shiny)
 library(aRpsDCA)
+library(scales)
 
 valid.data <- function(frame)
 {
@@ -149,9 +150,17 @@ shinyServer(function (input, output, session) {
             well.time <- well.time[time.order]
             well.rate <- well.rate[time.order]
 
+            well.rate <- rescale.by.time(well.rate,
+              from.period=input$rateunit, to.period='day', method='rate')
+
             if (inherits(well.time, "Date")) {
-                well.time <-
-                  as.numeric(well.time) - as.numeric(well.time)[1]
+                well.time <- as.numeric(well.time)
+                well.time <- well.time - well.time[1]
+                well.time <- rescale.by.time(well.time,
+                  from.period='day', to.period='year', method='time')
+            } else {
+                well.time <- rescale.by.time(well.time,
+                  from.period=input$timeunit, to.period='year', method='time')
             }
 
             peak.time <- well.time[which.max(well.rate)]
@@ -185,11 +194,20 @@ shinyServer(function (input, output, session) {
             well.time <- well.time[time.order]
 
             lines(well.rate ~ well.time,
-              col=palette[match(well, levels(wellid.factor))], lty='dashed')
+              col=alpha(palette[match(well, levels(wellid.factor))], 0.75),
+              lty='dashed')
 
             well.decline <- reactive.declines()[[well]]
             if (!is.null(well.decline)) {
-                well.time.forecast <- as.numeric(well.time)
+                if (inherits(well.time, 'Date')) {
+                    well.time.forecast <- as.numeric(well.time)
+                    well.time.forecast <- rescale.by.time(well.time.forecast,
+                      from.period='day', to.period='year', method='time')
+                } else {
+                    well.time.forecast <- rescale.by.time(well.time,
+                      from.period=input$timeunit, to.period='year',
+                      method='time')
+                }
                 well.time.forecast.shift <-
                   well.time.forecast - well.time.forecast[1]
                 which.forecast <-
@@ -198,6 +216,8 @@ shinyServer(function (input, output, session) {
                   well.time.forecast.shift[which.forecast]
                 well.rate.forecast <- arps.q(well.decline$decline,
                   well.time.forecast.shift)
+                well.rate.forecast <- rescale.by.time(well.rate.forecast,
+                  from.period='day', to.period=input$rateunit, method='rate')
                 lines(well.rate.forecast ~ well.time[which.forecast],
                   col=palette[match(well, levels(wellid.factor))], lty='dotted')
             }
@@ -231,5 +251,14 @@ shinyServer(function (input, output, session) {
         tagList(h3('Active wells'), selectInput('selectedwells', NULL,
           well.names, multiple=TRUE, selected=well.names, selectize=FALSE,
           size=min(length(well.names), 50)))
+    })
+
+    output$maybetimeunit <- renderUI({
+        validate(need(reactive.valid.data(), ''))
+        if (inherits(reactive.time(), 'Date'))
+            NULL
+        else
+            selectInput('timeunit', 'Time units',
+              c('days'='day', 'months'='month', 'years'='year'))
     })
 })

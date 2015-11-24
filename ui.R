@@ -16,6 +16,8 @@ input.declinetype <- selectInput('declinetype', 'Decline type',
   c('Arps exponential' = 'EXP',
     'Arps hyperbolic' = 'HYP'))
     #'Hyperbolic-to-exponential' = 'H2E'))
+input.rateunit <- selectInput('rateunit', 'Rate units',
+  c('/ day'='day', '/ month'='month', '/ year'='year'))
 
 shinyUI(fluidPage(
     titlePanel('aRpsDCA interactive demo'),
@@ -38,7 +40,9 @@ shinyUI(fluidPage(
                     uiOutput('wellchooser')),
                 tabPanel("Fit Options",
                     h3('aRpsDCA options'),
-                    input.declinetype))),
+                    input.declinetype,
+                    input.rateunit,
+                    uiOutput('maybetimeunit')))),
         mainPanel(
             tabsetPanel(
                 tabPanel('Data', tableOutput('table')),
