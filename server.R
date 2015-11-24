@@ -228,8 +228,38 @@ shinyServer(function (input, output, session) {
         reactive.data()
     })
 
-    output$declineparams <- renderPrint({
-        print(reactive.declines())
+    output$declineparams <- renderPlot({
+        if (input$declinetype == 'EXP') {
+            par(mfrow=c(1, 2))
+        } else if (input$declinetype == 'HYP') {
+            par(mfrow=c(2, 2))
+      # } else if (input$declinetype == 'H2E') {
+      #     par(mfrow=c(2, 2))
+        } else {
+            validate(need(FALSE, 'Invalid decline type.'))
+        }
+
+        hist(na.omit(sapply(reactive.declines(), function (decl) {
+            if (is.null(decl))
+                NA
+            else
+                decl$decline$qi
+        })), main="qi (/ day)", xlab='', col='red')
+
+        hist(na.omit(sapply(reactive.declines(), function (decl) {
+            if (is.null(decl))
+                NA
+            else
+                as.effective(decl$decline$D) * 100
+        })), main="Di (tan. eff. % / year)", xlab='', col='blue')
+
+        if (input$declinetype == 'HYP' || input$declinetype == 'H2E')
+            hist(na.omit(sapply(reactive.declines(), function (decl) {
+                if (is.null(decl))
+                    NA
+                else
+                    decl$decline$b
+            })), main="b", xlab='', col='green')
     })
 
     output$variableselection <- renderUI({
