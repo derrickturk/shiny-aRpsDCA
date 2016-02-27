@@ -30,8 +30,8 @@ input.missingstr <- textInput('missingstr', 'Missing data indicator', '#N/A!')
 
 input.declinetype <- selectInput('declinetype', 'Decline type',
   c('Arps exponential' = 'EXP',
-    'Arps hyperbolic' = 'HYP'))
-    #'Hyperbolic-to-exponential' = 'H2E'))
+    'Arps hyperbolic' = 'HYP',
+    'Hyperbolic-to-exponential' = 'H2E'))
 input.rateunit <- selectInput('rateunit', 'Rate units',
   c('/ day'='day', '/ month'='month', '/ year'='year'))
 

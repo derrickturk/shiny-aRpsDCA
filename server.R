@@ -145,8 +145,8 @@ shinyServer(function (input, output, session) {
             fit.fn <- best.exponential
         else if (input$declinetype == 'HYP')
             fit.fn <- best.hyperbolic
-      # else if (input$declinetype == 'H2E')
-      #     fit.fn <- best.hyp2exp
+        else if (input$declinetype == 'H2E')
+            fit.fn <- best.hyp2exp
         else
             validate(need(FALSE, 'Invalid decline type.'))
 
@@ -249,8 +249,8 @@ shinyServer(function (input, output, session) {
             par(mfrow=c(1, 2))
         } else if (input$declinetype == 'HYP') {
             par(mfrow=c(2, 2))
-      # } else if (input$declinetype == 'H2E') {
-      #     par(mfrow=c(2, 2))
+        } else if (input$declinetype == 'H2E') {
+            par(mfrow=c(2, 2))
         } else {
             validate(need(FALSE, 'Invalid decline type.'))
         }
@@ -262,12 +262,21 @@ shinyServer(function (input, output, session) {
                 decl$decline$qi
         })), main="qi (/ day)", xlab='', col='red')
 
-        hist(na.omit(sapply(reactive.declines(), function (decl) {
-            if (is.null(decl))
-                NA
-            else
-                as.effective(decl$decline$D) * 100
-        })), main="Di (tan. eff. % / year)", xlab='', col='blue')
+        if (input$declinetype == 'EXP' || input$declinetype == 'HYP')
+            hist(na.omit(sapply(reactive.declines(), function (decl) {
+                if (is.null(decl))
+                    NA
+                else
+                    as.effective(decl$decline$D) * 100
+            })), main="Di (tan. eff. % / year)", xlab='', col='blue')
+
+        if (input$declinetype == 'H2E')
+            hist(na.omit(sapply(reactive.declines(), function (decl) {
+                if (is.null(decl))
+                    NA
+                else
+                    as.effective(decl$decline$Di) * 100
+            })), main="Di (tan. eff. % / year)", xlab='', col='blue')
 
         if (input$declinetype == 'HYP' || input$declinetype == 'H2E')
             hist(na.omit(sapply(reactive.declines(), function (decl) {
@@ -276,6 +285,14 @@ shinyServer(function (input, output, session) {
                 else
                     decl$decline$b
             })), main="b", xlab='', col='green')
+
+        if (input$declinetype == 'H2E')
+            hist(na.omit(sapply(reactive.declines(), function (decl) {
+                if (is.null(decl))
+                    NA
+                else
+                    as.effective(decl$decline$Df) * 100
+            })), main="Df (tan. eff. % / year)", xlab='', col='orange')
     })
 
     output$variableselection <- renderUI({
