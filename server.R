@@ -142,11 +142,11 @@ shinyServer(function (input, output, session) {
         )
 
         if (input$declinetype == 'EXP')
-            fit.fn <- best.exponential
+            fit.fn <- best.exponential.with.buildup
         else if (input$declinetype == 'HYP')
-            fit.fn <- best.hyperbolic
+            fit.fn <- best.hyperbolic.with.buildup
         else if (input$declinetype == 'H2E')
-            fit.fn <- best.hyp2exp
+            fit.fn <- best.hyp2exp.with.buildup
         else
             validate(need(FALSE, 'Invalid decline type.'))
 
@@ -179,15 +179,10 @@ shinyServer(function (input, output, session) {
                   from.period=input$timeunit, to.period='year', method='time')
             }
 
-            peak.time <- well.time[which.max(well.rate)]
-            well.rate <- well.rate[well.time >= peak.time]
-            well.time <- well.time[well.time >= peak.time]
-
             if (length(well.time) <= 2)
                 return(NULL)
 
             result <- fit.fn(well.rate, well.time)
-            result$peak.time <- peak.time
             result
         }, simplify=FALSE, USE.NAMES=TRUE)
     })
@@ -224,17 +219,11 @@ shinyServer(function (input, output, session) {
                       from.period=input$timeunit, to.period='year',
                       method='time')
                 }
-                well.time.forecast.shift <-
-                  well.time.forecast - well.time.forecast[1]
-                which.forecast <-
-                  which(well.time.forecast.shift >= well.decline$peak.time)
-                well.time.forecast.shift <-
-                  well.time.forecast.shift[which.forecast]
                 well.rate.forecast <- arps.q(well.decline$decline,
-                  well.time.forecast.shift)
+                  well.time.forecast)
                 well.rate.forecast <- rescale.by.time(well.rate.forecast,
                   from.period='day', to.period=input$rateunit, method='rate')
-                lines(well.rate.forecast ~ well.time[which.forecast],
+                lines(well.rate.forecast ~ well.time,
                   col=palette[match(well, levels(wellid.factor))], lty='dotted')
             }
         })
@@ -246,11 +235,11 @@ shinyServer(function (input, output, session) {
 
     output$declineparams <- renderPlot({
         if (input$declinetype == 'EXP') {
-            par(mfrow=c(1, 2))
+            par(mfrow=c(2, 2))
         } else if (input$declinetype == 'HYP') {
-            par(mfrow=c(2, 2))
+            par(mfrow=c(3, 2))
         } else if (input$declinetype == 'H2E') {
-            par(mfrow=c(2, 2))
+            par(mfrow=c(3, 2))
         } else {
             validate(need(FALSE, 'Invalid decline type.'))
         }
@@ -259,7 +248,7 @@ shinyServer(function (input, output, session) {
             if (is.null(decl))
                 NA
             else
-                decl$decline$qi
+                decl$decline$decline$qi
         })), main="qi (/ day)", xlab='', col='red')
 
         if (input$declinetype == 'EXP' || input$declinetype == 'HYP')
@@ -267,7 +256,7 @@ shinyServer(function (input, output, session) {
                 if (is.null(decl))
                     NA
                 else
-                    as.effective(decl$decline$D) * 100
+                    as.effective(decl$decline$decline$D) * 100
             })), main="Di (tan. eff. % / year)", xlab='', col='blue')
 
         if (input$declinetype == 'H2E')
@@ -275,7 +264,7 @@ shinyServer(function (input, output, session) {
                 if (is.null(decl))
                     NA
                 else
-                    as.effective(decl$decline$Di) * 100
+                    as.effective(decl$decline$decline$Di) * 100
             })), main="Di (tan. eff. % / year)", xlab='', col='blue')
 
         if (input$declinetype == 'HYP' || input$declinetype == 'H2E')
@@ -283,7 +272,7 @@ shinyServer(function (input, output, session) {
                 if (is.null(decl))
                     NA
                 else
-                    decl$decline$b
+                    decl$decline$decline$b
             })), main="b", xlab='', col='green')
 
         if (input$declinetype == 'H2E')
@@ -291,8 +280,22 @@ shinyServer(function (input, output, session) {
                 if (is.null(decl))
                     NA
                 else
-                    as.effective(decl$decline$Df) * 100
+                    as.effective(decl$decline$decline$Df) * 100
             })), main="Df (tan. eff. % / year)", xlab='', col='orange')
+
+        hist(na.omit(sapply(reactive.declines(), function (decl) {
+            if (is.null(decl))
+                NA
+            else
+                decl$decline$initial.rate
+        })), main="Initial rate (/ day)", xlab='', col="purple")
+
+        hist(na.omit(sapply(reactive.declines(), function (decl) {
+            if (is.null(decl))
+                NA
+            else
+                decl$decline$time.to.peak
+        })), main="Time to peak rate (years)", xlab='', col="yellow")
     })
 
     output$variableselection <- renderUI({
